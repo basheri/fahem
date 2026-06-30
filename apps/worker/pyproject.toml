@@ -1,0 +1,65 @@
+[project]
+name = "fahem-worker"
+version = "0.1.0"
+description = "Fahem AI worker — Celery tasks for PDF processing, OCR, embeddings, and generation."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "celery[redis]==5.4.*",
+    "redis==5.*",
+    "sqlalchemy==2.0.*",
+    "psycopg[binary]==3.2.*",
+    "pgvector==0.3.*",
+    "boto3==1.35.*",
+    "pydantic==2.10.*",
+    "pydantic-settings==2.7.*",
+]
+
+# Heavy / native-coupled extras. These are installed inside the worker Docker image
+# (which also provides the tesseract + ghostscript system binaries and the embedding
+# model weights). They are intentionally NOT part of the default host `uv sync`.
+[project.optional-dependencies]
+pdf = [
+    "pymupdf==1.25.*",
+    "ocrmypdf==16.*",
+    "pytesseract==0.3.*",
+    "pdf2image==1.17.*",
+]
+embeddings = [
+    "sentence-transformers==3.*",
+]
+
+[dependency-groups]
+dev = [
+    "ruff==0.8.*",
+    "mypy==1.14.*",
+    "pytest==8.*",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+# Celery ships no type stubs / py.typed marker, so its task decorator is untyped.
+# Allow decorating with it without losing strictness elsewhere.
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+module = ["celery.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["worker"]
