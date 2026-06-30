@@ -33,12 +33,17 @@ PYJSON
 
 bash -n .claude/hooks/block-dangerous.sh
 
-if grep -RInE --exclude='.env.example' --exclude='validate-kit.sh' --exclude-dir='.git' '(sk-or-v1-[A-Za-z0-9_-]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY)' .; then
+# Dependency and build directories are gitignored third-party output; do not scan them.
+prune_dirs=(--exclude-dir='.git' --exclude-dir='node_modules' --exclude-dir='.venv' \
+  --exclude-dir='.next' --exclude-dir='dist' --exclude-dir='coverage' \
+  --exclude-dir='.mypy_cache' --exclude-dir='.ruff_cache' --exclude-dir='.pytest_cache')
+
+if grep -RInE --exclude='.env.example' --exclude='validate-kit.sh' "${prune_dirs[@]}" '(sk-or-v1-[A-Za-z0-9_-]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY)' .; then
   echo "Potential secret detected" >&2
   exit 1
 fi
 
-if grep -RIl $'\r' --include='*.md' --include='*.json' --include='*.yaml' --include='*.yml' . | grep -q .; then
+if grep -RIl $'\r' --include='*.md' --include='*.json' --include='*.yaml' --include='*.yml' "${prune_dirs[@]}" . | grep -q .; then
   echo "CRLF line endings detected" >&2
   exit 1
 fi
