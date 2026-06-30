@@ -1,0 +1,47 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+secrets/
+*.pem
+*.key
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.pnpm-store/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Test artifacts
+playwright-report/
+test-results/
+allure-results/
+
+# Runtime data
+.local-data/
+uploads/
+processed/
+*.sqlite3
+
+# IDE and OS
+.DS_Store
+.idea/
+.vscode/settings.json
+*.swp
+
+# Logs
+*.log
+logs/

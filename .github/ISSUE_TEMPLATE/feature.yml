@@ -1,0 +1,36 @@
+name: Feature slice
+description: Implement a bounded vertical slice mapped to acceptance criteria
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User outcome
+    validations:
+      required: true
+  - type: input
+    id: acceptance
+    attributes:
+      label: Acceptance criterion IDs
+      placeholder: AC-04, AC-07
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope and out of scope
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Security, privacy, deletion, and accessibility impact
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Required verification evidence
+    validations:
+      required: true

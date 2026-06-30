@@ -1,0 +1,451 @@
+openapi: 3.1.0
+info:
+  title: Fahem AI API
+  version: 0.1.0
+  description: Initial MVP contract. The implementation must keep this file synchronized with runtime routes.
+servers:
+  - url: /api/v1
+paths:
+  /sessions:
+    post:
+      operationId: createSession
+      responses:
+        '201':
+          description: Anonymous session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+  /sessions/current:
+    get:
+      operationId: getCurrentSession
+      responses:
+        '200':
+          description: Current anonymous session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+    delete:
+      operationId: deleteCurrentSession
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Deletion started or already complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionStatus'
+  /documents/upload:
+    post:
+      operationId: uploadDocument
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, explanationLevel]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                explanationLevel:
+                  $ref: '#/components/schemas/ExplanationLevel'
+      responses:
+        '202':
+          description: Upload accepted and processing job created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [document, job]
+                properties:
+                  document:
+                    $ref: '#/components/schemas/Document'
+                  job:
+                    $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+  /documents/{documentId}:
+    get:
+      operationId: getDocument
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Session-owned document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '404':
+          $ref: '#/components/responses/Error'
+  /documents/{documentId}/progress:
+    get:
+      operationId: getDocumentProgress
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Actual processing stage and counters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /documents/{documentId}/file:
+    get:
+      operationId: getDocumentFile
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Authorized PDF stream with range support
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+  /documents/{documentId}/learning-map:
+    get:
+      operationId: getLearningMap
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Units, lessons, concepts, and source pages
+          content:
+            application/json:
+              schema:
+                type: object
+  /documents/{documentId}/chat/messages:
+    get:
+      operationId: listChatMessages
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Session-scoped chat messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatMessage'
+    post:
+      operationId: createChatMessage
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+      responses:
+        '200':
+          description: Grounded Arabic answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroundedAnswer'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /documents/{documentId}/summaries:
+    post:
+      operationId: createSummary
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerationScope'
+      responses:
+        '202':
+          description: Summary generation job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /documents/{documentId}/quizzes:
+    post:
+      operationId: createQuiz
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/GenerationScope'
+                - type: object
+                  properties:
+                    questionCount:
+                      type: integer
+                      minimum: 1
+                      maximum: 30
+      responses:
+        '202':
+          description: Quiz generation job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /documents/{documentId}/flashcard-sets:
+    post:
+      operationId: createFlashcardSet
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerationScope'
+      responses:
+        '202':
+          description: Flashcard generation job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /jobs/{jobId}:
+    get:
+      operationId: getJob
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session-owned job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+components:
+  parameters:
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 200
+  responses:
+    Error:
+      description: Safe API error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    ExplanationLevel:
+      type: string
+      enum: [beginner, intermediate, advanced]
+    Session:
+      type: object
+      additionalProperties: false
+      required: [status, idleExpiresAt, absoluteExpiresAt]
+      properties:
+        status:
+          type: string
+          enum: [active, deleting, deleted, expired]
+        idleExpiresAt:
+          type: string
+          format: date-time
+        absoluteExpiresAt:
+          type: string
+          format: date-time
+    DeletionStatus:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [deleting, deleted]
+    Document:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, status, explanationLevel, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        status:
+          type: string
+          enum: [uploaded, validating, extracting, ocr, analyzing, indexing, ready, degraded, failed, deleting, deleted]
+        explanationLevel:
+          $ref: '#/components/schemas/ExplanationLevel'
+        pageCount:
+          type: [integer, 'null']
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        failureCode:
+          type: [string, 'null']
+    Job:
+      type: object
+      additionalProperties: false
+      required: [id, type, status, stage]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, succeeded, degraded, failed, cancelled]
+        stage:
+          type: string
+        completedUnits:
+          type: integer
+          minimum: 0
+        totalUnits:
+          type: [integer, 'null']
+          minimum: 0
+        errorCode:
+          type: [string, 'null']
+    Citation:
+      type: object
+      additionalProperties: false
+      required: [id, pageNumber, quote, viewerAnchor]
+      properties:
+        id:
+          type: string
+        pageNumber:
+          type: integer
+          minimum: 1
+        quote:
+          type: string
+          minLength: 1
+        viewerAnchor:
+          type: object
+          additionalProperties: false
+          required: [pageNumber]
+          properties:
+            pageNumber:
+              type: integer
+              minimum: 1
+            boundingBoxes:
+              type: array
+              items:
+                type: array
+                minItems: 4
+                maxItems: 4
+                items:
+                  type: number
+    GroundedAnswer:
+      type: object
+      additionalProperties: false
+      required: [status, answer, citations, limitations]
+      properties:
+        status:
+          type: string
+          enum: [answered, partiallyAnswered, notFound]
+        answer:
+          type: string
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Citation'
+        unsupportedPart:
+          type: [string, 'null']
+        limitations:
+          type: array
+          items:
+            type: string
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required: [id, role, content, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        answer:
+          oneOf:
+            - $ref: '#/components/schemas/GroundedAnswer'
+            - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+    GenerationScope:
+      type: object
+      additionalProperties: false
+      required: [scopeType]
+      properties:
+        scopeType:
+          type: string
+          enum: [document, unit, lesson, concept, pageRange]
+        scopeId:
+          type: [string, 'null']
+        startPage:
+          type: [integer, 'null']
+          minimum: 1
+        endPage:
+          type: [integer, 'null']
+          minimum: 1
+        detail:
+          type: string
+          enum: [short, detailed]
+          default: short
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message, requestId]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        requestId:
+          type: string
+        fieldErrors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
